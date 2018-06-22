@@ -9,6 +9,8 @@
 /** Used to capture table input while swipe buttons are visible*/
 @interface MGSwipeTableInputOverlay : UIView
 @property (nonatomic, weak) MGSwipeTableCell * currentCell;
+@property (nonatomic, strong) UIPanGestureRecognizer *panRecognizer;
+- (BOOL)shouldHighlight;
 @end
 
 @implementation MGSwipeTableInputOverlay
@@ -676,6 +678,10 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     _panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panHandler:)];
     [self addGestureRecognizer:_panRecognizer];
     _panRecognizer.delegate = self;
+    _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapHandler:)];
+    _tapRecognizer.cancelsTouchesInView = NO;
+    _tapRecognizer.delegate = self;
+    [self addGestureRecognizer:_tapRecognizer];
     _activeExpansion = nil;
     _previusHiddenViews = [NSMutableSet set];
     _swipeState = MGSwipeStateNone;
@@ -684,7 +690,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     _preservesSelectionStatus = NO;
     _allowsOppositeSwipe = YES;
     _firstSwipeState = MGSwipeStateNone;
-    
 }
 
 -(void) cleanViews
@@ -897,11 +902,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     _previusSelectionStyle = self.selectionStyle;
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     [self setAccesoryViewsHidden:YES];
-    
-    _tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapHandler:)];
-    _tapRecognizer.cancelsTouchesInView = YES;
-    _tapRecognizer.delegate = self;
-    [self addGestureRecognizer:_tapRecognizer];
 }
 
 -(void) hideSwipeOverlayIfNeeded
@@ -932,11 +932,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     
     if (_delegate && [_delegate respondsToSelector:@selector(swipeTableCellWillEndSwiping:)]) {
         [_delegate swipeTableCellWillEndSwiping:self];
-    }
-    
-    if (_tapRecognizer) {
-        [self removeGestureRecognizer:_tapRecognizer];
-        _tapRecognizer = nil;
     }
 }
 
@@ -1022,7 +1017,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     }
     return [super hitTest:point withEvent:event];
 }
-
+    
 #pragma mark Some utility methods
 
 - (UIImage *)imageFromView:(UIView *)view cropSize:(CGSize)cropSize{
@@ -1318,7 +1313,13 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     if (hide) {
         [self hideSwipeAnimated:YES];
     }
+    if (_swipeState == MGSwipeStateNone) {
+       if (self.shouldHighlight) {
+            [self selectCell];
+        }
+    }
 }
+
 
 -(CGFloat) filterSwipe: (CGFloat) offset
 {
@@ -1464,10 +1465,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         
         return (_allowSwipeLeftToRight && translation.x > 0) || (_allowSwipeRightToLeft && translation.x < 0);
     }
-    else if (gestureRecognizer == _tapRecognizer) {
-        CGPoint point = [_tapRecognizer locationInView:_swipeView];
-        return CGRectContainsPoint(_swipeView.bounds, point);
-    }
     return YES;
 }
 
@@ -1497,5 +1494,28 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     return _swipeOffset == 0  ? [super indexOfAccessibilityElement:element] : 0;
 }
 
+#pragma mark - Selection handling
 
+- (BOOL)shouldHighlight {
+    BOOL shouldHighlight = YES;
+    if ([[self parentTable].delegate respondsToSelector:@selector(tableView:shouldHighlightRowAtIndexPath:)]) {
+        NSIndexPath *cellIndexPath = [[self parentTable] indexPathForCell:self];
+        shouldHighlight = [[self parentTable].delegate tableView:[self parentTable] shouldHighlightRowAtIndexPath:cellIndexPath];
+    }
+    return shouldHighlight;
+}
+
+- (void)selectCell {
+    NSIndexPath *cellIndexPath = [[self parentTable] indexPathForCell:self];
+    if ([[self parentTable].delegate respondsToSelector:@selector(tableView:willSelectRowAtIndexPath:)]) {
+        cellIndexPath = [[self parentTable].delegate tableView:[self parentTable] willSelectRowAtIndexPath:cellIndexPath];
+    }
+    if (cellIndexPath) {
+        [[self parentTable] selectRowAtIndexPath:cellIndexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+        if ([[self parentTable].delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]) {
+            [[self parentTable].delegate tableView:[self parentTable] didSelectRowAtIndexPath:cellIndexPath];
+        }
+    }
+}
+    
 @end
