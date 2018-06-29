@@ -1314,7 +1314,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         [self hideSwipeAnimated:YES];
     }
     if (_swipeState == MGSwipeStateNone) {
-       if (self.shouldHighlight) {
+       if (![self parentTable].allowsSelection && self.shouldHighlight) {
             [self selectCell];
         }
     }
