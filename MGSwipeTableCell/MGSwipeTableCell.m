@@ -665,6 +665,13 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     [self hideSwipeOverlayIfNeeded];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (self.swipeOffset) {
+        [self hideSwipeAnimated:YES];
+    }
+}
+
 -(void) initViews: (BOOL) cleanButtons
 {
     if (cleanButtons) {
@@ -747,7 +754,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 -(UIEdgeInsets) getSafeInsets {
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
     if (@available(iOS 11, *)) {
-        return [UIApplication sharedApplication].keyWindow.safeAreaInsets;
+        return self.safeAreaInsets;
     }
     else {
         return UIEdgeInsetsZero;
@@ -755,6 +762,14 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
 #else
     return UIEdgeInsetsZero;
 #endif
+}
+
+- (BOOL)useSafeInset {
+    UIEdgeInsets safeInsets = [self getSafeInsets];
+    if (safeInsets.right != safeInsets.left) {
+        return NO;
+    }
+    return self.parentTable.insetsContentViewsToSafeArea;
 }
 
 -(UIView *) swipeContentView
@@ -785,7 +800,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
             // Refresh safe insets
             if (_leftView) {
                 CGFloat width = _leftView.bounds.size.width;
-                [_leftView setSafeInset:safeInsets.left useSafeInset:self.parentTable.insetsContentViewsToSafeArea extendEdgeButton:_leftSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
+                [_leftView setSafeInset:safeInsets.left useSafeInset:self.useSafeInset extendEdgeButton:_leftSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
                 if (_swipeOffset > 0 && _leftView.bounds.size.width != width) {
                     // Adapt offset to the view change size due to safeInsets
                     _swipeOffset += _leftView.bounds.size.width - width;
@@ -793,7 +808,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
             }
             if (_rightView) {
                 CGFloat width = _rightView.bounds.size.width;
-                [_rightView setSafeInset:safeInsets.right useSafeInset:self.parentTable.insetsContentViewsToSafeArea extendEdgeButton:_rightSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
+                [_rightView setSafeInset:safeInsets.right useSafeInset:self.useSafeInset extendEdgeButton:_rightSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
                 if (_swipeOffset < 0 && _rightView.bounds.size.width != width) {
                     // Adapt offset to the view change size due to safeInsets
                     _swipeOffset -= _rightView.bounds.size.width - width;
@@ -837,7 +852,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         _leftSwipeSettings.allowsButtonsWithDifferentWidth = _leftSwipeSettings.allowsButtonsWithDifferentWidth || _allowsButtonsWithDifferentWidth;
         _leftView = [[MGSwipeButtonsView alloc] initWithButtons:_leftButtons direction:MGSwipeDirectionLeftToRight swipeSettings:_leftSwipeSettings safeInset:safeInsets.left];
         _leftView.cell = self;
-        CGFloat safeInsetsChange = self.parentTable.insetsContentViewsToSafeArea ? safeInsets.right * ([self isRTLLocale] ? 1 : -1) : 0;
+        CGFloat safeInsetsChange = self.useSafeInset ? safeInsets.right * ([self isRTLLocale] ? 1 : -1) : 0;
         _leftView.frame = CGRectMake(-_leftView.bounds.size.width + safeInsetsChange,
                                      _leftSwipeSettings.topMargin,
                                      _leftView.bounds.size.width,
@@ -849,7 +864,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         _rightSwipeSettings.allowsButtonsWithDifferentWidth = _rightSwipeSettings.allowsButtonsWithDifferentWidth || _allowsButtonsWithDifferentWidth;
         _rightView = [[MGSwipeButtonsView alloc] initWithButtons:_rightButtons direction:MGSwipeDirectionRightToLeft swipeSettings:_rightSwipeSettings safeInset:safeInsets.right];
         _rightView.cell = self;
-        CGFloat safeInsetsChange = self.parentTable.insetsContentViewsToSafeArea ? safeInsets.right * ([self isRTLLocale] ? 1 : -1) : 0;
+        CGFloat safeInsetsChange = self.useSafeInset ? safeInsets.right * ([self isRTLLocale] ? 1 : -1) : 0;
         _rightView.frame = CGRectMake(_swipeOverlay.bounds.size.width + safeInsetsChange,
                                       _rightSwipeSettings.topMargin,
                                       _rightView.bounds.size.width,
@@ -860,11 +875,11 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     
     // Refresh safeInsets if required
     if (_leftView) {
-        [_leftView setSafeInset:safeInsets.left useSafeInset:self.parentTable.insetsContentViewsToSafeArea extendEdgeButton:_leftSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
+        [_leftView setSafeInset:safeInsets.left useSafeInset:self.useSafeInset extendEdgeButton:_leftSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
     }
     
     if (_rightView) {
-        [_rightView setSafeInset:safeInsets.right useSafeInset:self.parentTable.insetsContentViewsToSafeArea extendEdgeButton:_rightSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
+        [_rightView setSafeInset:safeInsets.right useSafeInset:self.useSafeInset extendEdgeButton:_rightSwipeSettings.expandLastButtonBySafeAreaInsets isRTL: [self isRTLLocale]];
     }
 }
 
@@ -904,7 +919,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     }
 
     _previusSelectionStyle = self.selectionStyle;
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
     [self setAccesoryViewsHidden:YES];
 }
 
@@ -925,12 +939,8 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         [_tableInputOverlay removeFromSuperview];
         _tableInputOverlay = nil;
     }
-    
-    self.selectionStyle = _previusSelectionStyle;
-    NSArray * selectedRows = self.parentTable.indexPathsForSelectedRows;
-    if ([selectedRows containsObject:[self.parentTable indexPathForCell:self]]) {
-        self.selected = NO; //Hack: in some iOS versions setting the selected property to YES own isn't enough to force the cell to redraw the chosen selectionStyle
-        self.selected = YES;
+    if (self.selectionStyle != UITableViewCellSelectionStyleNone) {
+        self.selectionStyle = _previusSelectionStyle;
     }
     [self setAccesoryViewsHidden:NO];
     
@@ -1139,7 +1149,7 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     
     BOOL onlyButtons = activeSettings.onlySwipeButtons;
     UIEdgeInsets safeInsets = [self getSafeInsets];
-    CGFloat safeInset = [self parentTable].insetsContentViewsToSafeArea ? [self isRTLLocale] ? safeInsets.right :  -safeInsets.left : 0;
+    CGFloat safeInset = self.useSafeInset ? [self isRTLLocale] ? safeInsets.right : -safeInsets.left : 0;
     _swipeView.transform = CGAffineTransformMakeTranslation(safeInset + (onlyButtons ? 0 : _swipeOffset), 0);
     
     //animate existing buttons
