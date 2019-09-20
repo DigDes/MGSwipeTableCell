@@ -919,6 +919,10 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     }
 
     _previusSelectionStyle = self.selectionStyle;
+    if (!@available(iOS 13.0, *)) {
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+    }
+
     [self setAccesoryViewsHidden:YES];
 }
 
@@ -939,9 +943,18 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
         [_tableInputOverlay removeFromSuperview];
         _tableInputOverlay = nil;
     }
-    if (self.selectionStyle != UITableViewCellSelectionStyleNone) {
+    if (!@available(iOS 13.0, *) || self.selectionStyle != UITableViewCellSelectionStyleNone) {
         self.selectionStyle = _previusSelectionStyle;
     }
+
+    if (!@available(iOS 13.0, *)) {
+        NSArray * selectedRows = self.parentTable.indexPathsForSelectedRows;
+        if ([selectedRows containsObject:[self.parentTable indexPathForCell:self]]) {
+            self.selected = NO; //Hack: in some iOS versions setting the selected property to YES own isn't enough to force the cell to redraw the chosen selectionStyle
+            self.selected = YES;
+        }
+    }
+
     [self setAccesoryViewsHidden:NO];
     
     if (_delegate && [_delegate respondsToSelector:@selector(swipeTableCellWillEndSwiping:)]) {
